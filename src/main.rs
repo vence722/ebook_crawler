@@ -71,8 +71,8 @@ async fn download_page(page: Page) -> Result<(), Box<dyn Error>> {
         }
     }
 
-    std::fs::create_dir_all(format!("./{}", page.book_id))?;
-    let mut save_file = File::create(format!("./{}/{}.txt", page.book_id, id))?;
+    std::fs::create_dir_all(format!("./data/{}/pages", page.book_id))?;
+    let mut save_file = File::create(format!("./data/{}/pages/{}.txt", page.book_id, id))?;
     save_file.write_all(content.as_bytes())?;
 
     println!("page {} done!", id);
@@ -81,13 +81,13 @@ async fn download_page(page: Page) -> Result<(), Box<dyn Error>> {
 }
 
 async fn merge_single_file(book_id: i32) -> Result<(), Box<dyn Error>> {
-    let mut output_file = File::create(format!("./{}.txt", book_id))?;
+    let mut output_file = File::create(format!("./data/{}/{}.txt", book_id, book_id))?;
 
-    let dir = std::fs::read_dir(format!("./{}", book_id))?;
+    let dir = std::fs::read_dir(format!("./data/{}/pages", book_id))?;
     for entry in dir {
         let entry = entry?;
         let file_name = entry.file_name();
-        let data = std::fs::read(format!("./{}/{}", book_id, file_name.to_str().unwrap_or("invalid")))?;
+        let data = std::fs::read(format!("./data/{}/pages/{}", book_id, file_name.to_str().unwrap_or("invalid")))?;
         output_file.write(data.as_slice())?;
     }
 
