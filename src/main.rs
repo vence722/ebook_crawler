@@ -3,6 +3,7 @@ use scraper::{Html, Selector};
 use std::fs::File;
 use std::io::prelude::*;
 use futures::stream::StreamExt;
+use std::str::FromStr;
 
 #[derive(Clone)]
 struct Page {
@@ -13,19 +14,29 @@ struct Page {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    const BOOK_ID: i32 = 624;
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() <= 1 {
+        println!("Usage ./ebook_crawler <book_id>");
+        std::process::exit(1);
+    }
+
+    let book_id: i32 = i32::from_str(args.get(1).unwrap().as_str()).unwrap_or(0);
+    if book_id <= 0 {
+        println!("Invalid book_id, should be integer greater than 0");
+        std::process::exit(1);
+    }
 
     let client = reqwest::Client::new();
-    let book_max_page = get_book_max_page(&client, BOOK_ID).await?;
+    let book_max_page = get_book_max_page(&client, book_id).await?;
 
     println!("book_max_page: {}", book_max_page);
 
     let mut pages = Vec::<Page>::new();
 
     for i in 1..=book_max_page {
-        let url = format!("https://www.haobook123.com/content/{}/{}", BOOK_ID, i);
+        let url = format!("https://www.haobook123.com/content/{}/{}", book_id, i);
         pages.push(Page{
-            book_id: BOOK_ID,
+            book_id,
             id: i,
             url
         });
@@ -37,7 +48,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     fetches.await;
 
-    merge_single_file(BOOK_ID).await?;
+    merge_single_file(book_id).await?;
 
     println!("all done!");
 
@@ -84,10 +95,9 @@ async fn merge_single_file(book_id: i32) -> Result<(), Box<dyn Error>> {
     let mut output_file = File::create(format!("./data/{}/{}.txt", book_id, book_id))?;
 
     let dir = std::fs::read_dir(format!("./data/{}/pages", book_id))?;
-    for entry in dir {
-        let entry = entry?;
-        let file_name = entry.file_name();
-        let data = std::fs::read(format!("./data/{}/pages/{}", book_id, file_name.to_str().unwrap_or("invalid")))?;
+    for i in 1..=dir.count() {
+        let file_name = format!("{}.txt", i);
+        let data = std::fs::read(format!("./data/{}/pages/{}", book_id, file_name))?;
         output_file.write(data.as_slice())?;
     }
 
